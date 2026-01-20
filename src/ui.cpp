@@ -1,7 +1,9 @@
 #include "../include/ui.h"
+#include <algorithm>
+
+const double SCREEN_PADDING_SCALE = 0.75;
 
 MainWindow::MainWindow(QWidget *parent) {
-    // QDialog dialog;
     QWidget *main_widget = new QWidget(this);
     setCentralWidget(main_widget);
     QVBoxLayout *layout = new QVBoxLayout(main_widget);
@@ -13,17 +15,13 @@ MainWindow::MainWindow(QWidget *parent) {
     layout->addWidget(toolbar);
 
     this->_label = new QLabel();
-    // QLabel *label = new QLabel();
     layout->addWidget(this->_label);
 
     QGraphicsScene * graphic = new QGraphicsScene(main_widget);
 
-    // label->setPixmap(QPixmap::fromImage(show_image.scaled(image_read.getWidth() / 4, image_read.getHeight() / 4)));
-    // label->resize(show_image.size());
-
-    // label->setScaledContents(true);
-
-    // dialog.show();
+    QRect const rec = QGuiApplication::primaryScreen()->geometry();
+    this->_maxHeight = rec.height() * SCREEN_PADDING_SCALE;
+    this->_maxWidth = rec.width() * SCREEN_PADDING_SCALE;
 }
 
 MainWindow::~MainWindow() {}
@@ -44,8 +42,14 @@ void MainWindow::openFileDialog() {
 }
 
 void MainWindow::_setImage(QImage image) {
-    this->_label->setPixmap(QPixmap::fromImage(image.scaled(image.width() / 4, image.height() / 4)));
-    // label->resize(image.size());
+    int imageWidth = image.width();
+    int imageHeight = image.height();
+    double widthScale = std::min(this->_maxWidth, imageWidth) / double(imageWidth);
+    double heightScale = std::min(this->_maxHeight, imageHeight) / double(imageHeight);
+    double imageScale = std::min(widthScale, heightScale);
 
-    // this->_label->setScaledContents(true);
+    this->_label->setPixmap(
+        QPixmap::fromImage(image.scaled(int(imageWidth * imageScale), int(imageHeight * imageScale)))
+    );
+    this->resize(this->sizeHint());
 }

@@ -1,6 +1,7 @@
 build
 data
 output
+.github
 .cache
 .clang-format
 .vscode

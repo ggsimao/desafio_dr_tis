@@ -3,6 +3,7 @@
 #include <iostream>
 #include "../include/dicom.h"
 
+#include <QScreen>
 #include <qwidget.h>
 #include <QMainWindow>
 #include <QPushButton>
@@ -31,4 +32,5 @@ class MainWindow : public QMainWindow {
         void _setImage(QImage image);
         QLabel *_label;
         QPushButton *_openButton;
+        int _maxHeight, _maxWidth;
 };
