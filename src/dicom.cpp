@@ -1,6 +1,4 @@
 #include "../include/dicom.h"
-#include <dcmtk/dcmimgle/dcmimage.h>
-#include <utility>
 
 
 DCMTKCodecs::DCMTKCodecs() {
@@ -20,18 +18,16 @@ ImageData::ImageData(const char* fileName) {
     const char* fileNameData = this->_fileName.data();
     std::cout << this->_fileName << std::endl;
 
-    this->_image = new DicomImage(fileNameData);
-    std::cout << this->_image->getWidth() << ", " << this->_image->getHeight() << std::endl;
+    OFCondition status = this->_fileFormat.loadFile(this->_fileName.data());
 
-    OFCondition status = this->_fileFormat.loadFile(fileNameData);
-    if (status.good())
-    {
-        std::cout << "Successfully read file " << fileNameData << std::endl;
-        _valid = true;
-    }
-    else {
-        std::cerr << "Error: cannot read DICOM file " << fileNameData <<  " (" << status.text() << ")" << std::endl;
-        _valid = false;
+    DcmDataset *dataset = this->_fileFormat.getDataset();
+    this->_image = new DicomImage(dataset, EXS_Unknown, CIF_MayDetachPixelData);
+    if (this->_image != NULL && this->_image->getStatus() == EIS_Normal) {
+        std::cout << this->_image->getWidth() << ", " << this->_image->getHeight() << std::endl;
+    } else {
+        // TODO
+        std::cerr << "Error: cannot read DICOM file " <<
+        fileNameData <<  " (" << DicomImage::getString(this->_image->getStatus()) << ")" << std::endl;
     }
 }
 
@@ -39,58 +35,40 @@ ImageData::~ImageData() {
     delete this->_image;
 }
 
-bool ImageData::isValid() {
-    return this->_valid;
-}
-
-int ImageData::getHeight() {
+int ImageData::getHeight() const {
     return this->_image->getHeight();
 }
 
-int ImageData::getWidth() {
+int ImageData::getWidth() const {
     return this->_image->getWidth();
 }
 
-uchar* ImageData::getOutputData() {
+bool ImageData::isMonochrome() const {
+    return this->_image->isMonochrome();
+}
+
+uchar* ImageData::getOutputData() const {
     return (uchar*)(this->_image->getOutputData(8));
 }
 
 std::map<std::string, std::string> ImageData::getMetadata() {
     std::map<std::string, std::string> metadata;
 
-    if (this->_valid) {
+    OFCondition status = this->_fileFormat.loadFile(this->_fileName.data());
+    if (status.good()) {
         OFString patientName;
         DcmDataset *dataset = this->_fileFormat.getDataset();
-        if (dataset->findAndGetOFString(DCM_PatientName, patientName).good())
-        {
-            metadata.emplace(std::make_pair("Patient's Name", patientName));
-            std::cout << "Patient's Name: " << patientName << std::endl;
-        }
-        else
-            std::cerr << "Error: cannot access Patient's Name!" << std::endl;
+        dataset->print(std::cout);
+        // if (dataset->findAndGetOFString(DCM_PatientName, patientName).good())
+        // {
+        //     metadata.emplace(std::make_pair("Patient's Name", patientName));
+        //     std::cout << "Patient's Name: " << patientName << std::endl;
+        // }
+        // else
+        //     std::cerr << "Error: cannot access Patient's Name!" << std::endl;
+    } else {
+        std::cerr << "Error: cannot read DICOM file " << this->_fileName.data() <<  " (" << status.text() << ")" << std::endl;
     }
 
     return metadata;
-}
-
-// TODO: TIRAR DAQUI
-QImage ImageData::generate_qimage() {
-    uchar* image_data = (uchar*)(this->_image->getOutputData(8));
-
-    QImage show_image(
-        image_data,
-        this->_image->getWidth(),
-        this->_image->getHeight(),
-        this->_image->getWidth(),
-        QImage::Format_Indexed8
-    );
-
-
-    QVector<QRgb> table(256);
-    for (int i = 0; i < 256; ++i)
-        table[i] = qRgb(i, i, i);
-
-    show_image.setColorTable(table);
-
-    return show_image.copy();
 }

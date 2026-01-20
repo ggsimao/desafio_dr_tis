@@ -2,8 +2,10 @@
 
 #include <iostream>
 #include "../include/dicom.h"
+#include "../include/helpers.h"
 
 #include <QScreen>
+#include <qmainwindow.h>
 #include <qwidget.h>
 #include <QMainWindow>
 #include <QPushButton>
@@ -20,6 +22,8 @@
 #include <qtoolbar.h>
 #include <QImage>
 #include <QGraphicsScene>
+#include <QTimer>
+#include <QTableWidget>
 
 class MainWindow : public QMainWindow {
     Q_OBJECT

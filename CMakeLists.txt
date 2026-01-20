@@ -26,6 +26,7 @@ add_executable(desafio_dr_tis
     ${TIS_SOURCE_DIR}/dicom.cpp
     ${TIS_SOURCE_DIR}/ui.cpp
     ${TIS_INCLUDE_DIR}/ui.h
+    ${TIS_SOURCE_DIR}/helpers.cpp
 )
 target_link_libraries(desafio_dr_tis PRIVATE DCMTK::DCMTK)
 target_link_libraries(desafio_dr_tis PRIVATE Qt6::Gui Qt6::Widgets)

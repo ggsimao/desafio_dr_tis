@@ -11,7 +11,10 @@
 #include "dcmtk/dcmdata/dctk.h"
 #include "dcmtk/dcmimgle/dcmimage.h"
 
-#include <QImage>
+#include <dcmtk/dcmimgle/didocu.h>
+#include <dcmtk/dcmimage/dicoimg.h>
+#include <dcmtk/dcmimgle/diutils.h>
+#include <utility>
 
 struct DCMTKCodecs {
     DCMTKCodecs();
@@ -20,17 +23,19 @@ struct DCMTKCodecs {
 
 class ImageData {
     public:
-        ImageData(const char* file_name);
+        ImageData(const char* fileName);
         virtual ~ImageData();
-        bool isValid();
-        int getWidth();
-        int getHeight();
-        uchar* getOutputData();
+
+        // getters
+        int getWidth() const;
+        int getHeight() const;
+        bool isMonochrome() const;
+
+        // processam informação do arquivo
+        uchar* getOutputData() const;
         std::map<std::string, std::string> getMetadata();
-        QImage generate_qimage(); // TODO: tirar da classe
     private:
         std::string _fileName;
         DicomImage* _image;
         DcmFileFormat _fileFormat;
-        bool _valid;
 };
