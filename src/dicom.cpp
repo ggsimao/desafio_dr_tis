@@ -13,59 +13,73 @@ DCMTKCodecs::~DCMTKCodecs() {
     DcmRLEDecoderRegistration::cleanup();
 }
 
-ImageData::ImageData(const char* fileName) {
-    this->_fileName = std::string(fileName);
+ImageData::ImageData(const std::string fileName) : _fileName(fileName) {
     const char* fileNameData = this->_fileName.data();
-    std::cout << this->_fileName << std::endl;
+
+    std::cout << fileNameData << std::endl;
 
     OFCondition status = this->_fileFormat.loadFile(this->_fileName.data());
 
     DcmDataset *dataset = this->_fileFormat.getDataset();
-    this->_image = new DicomImage(dataset, EXS_Unknown, CIF_MayDetachPixelData);
-    if (this->_image != NULL && this->_image->getStatus() == EIS_Normal) {
+    this->_image = std::make_unique<DicomImage>(dataset, EXS_Unknown, CIF_MayDetachPixelData);
+    if (this->_image == NULL) {
+        this->_status = EMPTY;
+    } else if (this->_image->getStatus() == EIS_Normal) {
+        this->_status = READY;
         std::cout << this->_image->getWidth() << ", " << this->_image->getHeight() << std::endl;
     } else {
         // TODO
+        this->_status = INVALID;
         std::cerr << "Error: cannot read DICOM file " <<
         fileNameData <<  " (" << DicomImage::getString(this->_image->getStatus()) << ")" << std::endl;
     }
 }
 
-ImageData::~ImageData() {
-    delete this->_image;
+ImageData::~ImageData() {}
+
+ImageDataStatus ImageData::getStatus() const {
+    return this->_status;
 }
 
 int ImageData::getHeight() const {
-    return this->_image->getHeight();
+    if (this->_status != READY) {
+        return 0;
+    } else
+        return this->_image->getHeight();
 }
 
 int ImageData::getWidth() const {
-    return this->_image->getWidth();
+    if (this->_status != READY) {
+        return 0;
+    } else
+        return this->_image->getWidth();
 }
 
 bool ImageData::isMonochrome() const {
-    return this->_image->isMonochrome();
+    if (this->_status != READY) {
+        return false;
+    } else
+        return this->_image->isMonochrome();
 }
 
 uchar* ImageData::getOutputData() const {
-    return (uchar*)(this->_image->getOutputData(8));
+    if (this->_status != READY) {
+        return nullptr;
+    } else
+        return (uchar*)(this->_image->getOutputData(8));
 }
 
 std::map<std::string, std::string> ImageData::getMetadata() {
     std::map<std::string, std::string> metadata;
 
+    if (this->_status != READY) {
+        return metadata;
+    }
+
     OFCondition status = this->_fileFormat.loadFile(this->_fileName.data());
     if (status.good()) {
         OFString patientName;
         DcmDataset *dataset = this->_fileFormat.getDataset();
-        dataset->print(std::cout);
-        // if (dataset->findAndGetOFString(DCM_PatientName, patientName).good())
-        // {
-        //     metadata.emplace(std::make_pair("Patient's Name", patientName));
-        //     std::cout << "Patient's Name: " << patientName << std::endl;
-        // }
-        // else
-        //     std::cerr << "Error: cannot access Patient's Name!" << std::endl;
     } else {
         std::cerr << "Error: cannot read DICOM file " << this->_fileName.data() <<  " (" << status.text() << ")" << std::endl;
     }

@@ -21,12 +21,19 @@ struct DCMTKCodecs {
     ~DCMTKCodecs();
 };
 
+enum ImageDataStatus {
+    EMPTY,
+    INVALID,
+    READY,
+};
+
 class ImageData {
     public:
-        ImageData(const char* fileName);
+        ImageData(const std::string fileName);
         virtual ~ImageData();
 
         // getters
+        ImageDataStatus getStatus() const;
         int getWidth() const;
         int getHeight() const;
         bool isMonochrome() const;
@@ -35,7 +42,8 @@ class ImageData {
         uchar* getOutputData() const;
         std::map<std::string, std::string> getMetadata();
     private:
+        ImageDataStatus _status;
         std::string _fileName;
-        DicomImage* _image;
+        std::unique_ptr<DicomImage> _image;
         DcmFileFormat _fileFormat;
 };

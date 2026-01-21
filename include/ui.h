@@ -4,6 +4,10 @@
 #include "../include/dicom.h"
 #include "../include/helpers.h"
 
+#include <algorithm>
+#include <cstddef>
+#include <qtablewidget.h>
+
 #include <QScreen>
 #include <qmainwindow.h>
 #include <qwidget.h>
@@ -33,8 +37,9 @@ class MainWindow : public QMainWindow {
     private slots:
         void openFileDialog();
     private:
-        void _setImage(QImage image);
+        void _updateImage();
         QLabel *_label;
         QPushButton *_openButton;
+        std::unique_ptr<ImageData> _imageData;
         int _maxHeight, _maxWidth;
 };
