@@ -10,6 +10,8 @@
 #include <dcmtk/dcmdata/dcrledrg.h>
 #include "dcmtk/dcmdata/dctk.h"
 #include "dcmtk/dcmimgle/dcmimage.h"
+#include <dcmtk/ofstd/ofcond.h>
+#include <dcmtk/ofstd/ofstring.h>
 
 #include <dcmtk/dcmimgle/didocu.h>
 #include <dcmtk/dcmimage/dicoimg.h>
@@ -21,11 +23,27 @@ struct DCMTKCodecs {
     ~DCMTKCodecs();
 };
 
-enum ImageDataStatus {
-    EMPTY,
-    INVALID,
-    READY,
+struct ImageDataStatus {
+    enum ImageDataStatusType {EMPTY, INVALID, READY} type;
+    std::string message;
 };
+
+class MetadataNode {
+    public:
+        MetadataNode(std::string tag, std::string tag_name, std::string value);
+        ~MetadataNode();
+        void addChild(MetadataNode child);
+        MetadataNode getChild(int index);
+        int childCount();
+        std::string getTag();
+        std::string getTagName();
+        std::string getValue();
+    private:
+        std::string _tag, _tagName, _value;
+        std::vector<MetadataNode> _children;
+};
+
+MetadataNode generate_metadata_subtree(DcmElement* element);
 
 class ImageData {
     public:
@@ -40,7 +58,12 @@ class ImageData {
 
         // processam informação do arquivo
         uchar* getOutputData() const;
-        std::map<std::string, std::string> getMetadata();
+        std::vector<MetadataNode> getMetadata();
+        void getMinMaxValues(double &min, double &max) const;
+        void getWindowLevelWidth(double &level, double &width);
+
+        // manipulam atributos
+        void setWindowLevelWidth(double level, double width);
     private:
         ImageDataStatus _status;
         std::string _fileName;
