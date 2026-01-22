@@ -51,3 +51,7 @@ Ao executar o programa, será aberta uma janela de interface com quatro áreas:
 - Metadados (direita)
 
 Ao clicar no botão "Open File", será aberta uma janela de navegação do sistema de arquivos para a seleção de um arquivo com extensão `.dcm` ou `.DCM`. Se for um arquivo válido, a área de imagem se preencherá, os valores de window level e window width serão inicializados e os metadados serão exibidos.
+
+## Descrição da solução
+
+Ao ser selecionado um arquivo DICOM, a biblioteca DCTMK é usada para ler o arquivo como um objeto DicomImage, que é convertido em um objeto QImage para ser exibido na interface. O objeto também é usado em conjunto com elementos da interface que alteram os valores window level e window width da imagem, alterando sua exibição dinamicamente. Também é usado um objeto DcmFileFormat para ler os metadados e exibi-los em um componente QTreeWidget de maneira hierárquica.

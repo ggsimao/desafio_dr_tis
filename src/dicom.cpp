@@ -1,6 +1,4 @@
 #include "../include/dicom.h"
-#include <dcmtk/dcmdata/dcelem.h>
-#include <memory>
 
 DCMTKCodecs::DCMTKCodecs() {
     DJDecoderRegistration::registerCodecs();
@@ -45,10 +43,13 @@ std::string MetadataNode::getValue() {
 }
 
 MetadataNode generate_metadata_subtree(DcmElement* element) {
+    // gera o nodo raiz da sub-árvore
     OFString value;
     DcmTag tag = element->getTag();
     element->getOFStringArray(value);
     MetadataNode node = MetadataNode(tag.toString(), tag.getTagName(), value);
+
+    // se nodo tem filhos, gera uma sub-árvore pra cada um
     if (!element->isLeaf()) {
         DcmSequenceOfItems* seq = dynamic_cast<DcmSequenceOfItems*>(element);
         for (int i = 0; i < seq->card(); i++) {
@@ -69,19 +70,20 @@ ImageData::ImageData(const std::string fileName) : _fileName(fileName) {
     OFCondition status = this->_fileFormat.loadFile(this->_fileName.data());
 
     DcmDataset *dataset = this->_fileFormat.getDataset();
-    this->_image = std::make_unique<DicomImage>(dataset, EXS_Unknown, CIF_MayDetachPixelData);
     if (!status.good()) {
         this->_status = ImageDataStatus{ImageDataStatus::INVALID, status.text()};
-    } else if (this->_image == NULL) {
-        // TODO
-        this->_status = ImageDataStatus{ImageDataStatus::EMPTY, "Image is empty!"};
-    } else if (this->_image->getStatus() == EIS_Normal) {
-        this->_status = ImageDataStatus{ImageDataStatus::READY, "Image is ready."};
     } else {
-        // TODO
-        this->_status = ImageDataStatus{ImageDataStatus::INVALID, DicomImage::getString(this->_image->getStatus())};
-        std::cerr << "Error: cannot read DICOM file " <<
-        fileNameData <<  " (" << DicomImage::getString(this->_image->getStatus()) << ")" << std::endl;
+        this->_image = std::make_unique<DicomImage>(dataset, EXS_Unknown, CIF_MayDetachPixelData);
+        if (this->_image == NULL) {
+            this->_status = ImageDataStatus{ImageDataStatus::EMPTY, "Image is empty!"};
+        } else if (this->_image->getStatus() == EIS_Normal) {
+            this->_status = ImageDataStatus{ImageDataStatus::READY, "Image is ready."};
+        } else {
+            this->_status = ImageDataStatus{
+                ImageDataStatus::INVALID,
+                DicomImage::getString(this->_image->getStatus())
+            };
+        }
     }
 }
 
@@ -148,6 +150,7 @@ void ImageData::getWindowLevelWidth(double &level, double &width) {
     OFCondition width_status = dataset->findAndGetFloat64(DcmTagKey(0x0010, 0x1051), width);
     if (level_status.good() && width_status.good()) return;
 
+    // Se o arquivo não tem valores iniciais para window level e window width, calcula-os
     double min, max;
     this->getMinMaxValues(min, max);
     if (!level_status.good()) {

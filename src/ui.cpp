@@ -1,5 +1,8 @@
 #include "../include/ui.h"
+#include <qmessagebox.h>
 #include <qtreewidget.h>
+
+// Funções avulsas
 
 QImage generate_qimage(const ImageData& image) {
     const uchar* image_data = (uchar*)(image.getOutputData());
@@ -22,7 +25,6 @@ QImage generate_qimage(const ImageData& image) {
         );
         return show_image.copy();
     } else {
-        // TODO
         std::cerr << "Image is null" << std::endl;
         return QImage();
     }
@@ -39,6 +41,7 @@ void feed_tree_widget(QTreeWidgetItem* parent, MetadataNode child) {
 }
 
 // ----------------------------------------------------------------------------------------------------
+// Métodos WindowLevelWidthWidget
 
 WindowLevelWidthWidget::WindowLevelWidthWidget(QWidget* parent) {
     QVBoxLayout* root_layout = new QVBoxLayout(this);
@@ -103,6 +106,7 @@ void WindowLevelWidthWidget::setImage(ImageData& image) {
 }
 
 // ----------------------------------------------------------------------------------------------------
+// Métodos MainWindow
 
 MainWindow::MainWindow(QWidget *parent) {
     QWidget *main_widget = new QWidget(this);
@@ -113,6 +117,7 @@ MainWindow::MainWindow(QWidget *parent) {
     QHBoxLayout *general_layout = new QHBoxLayout(main_widget);
 
     // ---------------------------------------------------------------
+    // Lado esquerdo
 
     QWidget* left_widget = new QWidget();
     general_layout->addWidget(left_widget);
@@ -125,9 +130,9 @@ MainWindow::MainWindow(QWidget *parent) {
     toolbar->addWidget(file_button);
     left_layout->addWidget(toolbar);
 
-    this->_label = new QLabel();
-    this->_label->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-    left_layout->addWidget(this->_label);
+    this->_imageLabel = new QLabel();
+    this->_imageLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+    left_layout->addWidget(this->_imageLabel);
 
     QGraphicsScene * graphic = new QGraphicsScene(left_widget);
 
@@ -139,6 +144,7 @@ MainWindow::MainWindow(QWidget *parent) {
     left_layout->addWidget(this->_wlw_widget);
 
     // ---------------------------------------------------------------
+    // Lado direito
 
     QWidget* right_widget = new QWidget();
     QVBoxLayout *right_layout = new QVBoxLayout(right_widget);
@@ -176,23 +182,43 @@ void MainWindow::openFileDialog() {
     if (!fileName.isEmpty()) {
         const char* fileNameArray = fileName.toLocal8Bit().data();
         this->_imageData = std::make_unique<ImageData>(fileNameArray);
+
         this->_wlw_widget->setImage(*this->_imageData);
 
-        // se imagem for válida, muda nome da janela
-        if (this->_updateImage()) {
-            QString new_title = QString("desafio_dr_tis - ") + fileName;
-            this->setWindowTitle(new_title);
+        bool image_updated = this->_updateImage();
+
+        // muda nome da janela a partir da imagem carregada (ou não)
+        QString new_title = QString("desafio_dr_tis");
+        if (image_updated) {
+            new_title += QString(" - ") + fileName;
         }
+        this->setWindowTitle(new_title);
 
         this->_updateMetadata();
 
         // atualiza tamanho da janela
-        this->_label->setMinimumSize(QSize(0, 0));
-        this->_label->updateGeometry();
+        this->_imageLabel->setMinimumSize(QSize(0, 0));
+        this->_imageLabel->updateGeometry();
         resize(sizeHint());
         QTimer::singleShot(50, this, [this]() {
             this->resize(this->sizeHint());
         });
+
+        // mensagem de erro caso carregamento de imagem tenha falhado
+        ImageDataStatus status = this->_imageData->getStatus();
+        switch (status.type) {
+            case ImageDataStatus::EMPTY: {
+                QMessageBox::warning(this, "Error", "Couldn't load image: The image is empty.");
+                break;
+            }
+            case ImageDataStatus::INVALID: {
+                QString error_message = QString("Couldn't load image: ") + QString(status.message.data());
+                QMessageBox::warning(this, "Error", error_message);
+                break;
+            }
+            case ImageDataStatus::READY:
+                break;
+        }
     }
 }
 
@@ -213,19 +239,27 @@ void MainWindow::updateWindowWidth(int width) {
 }
 
 bool MainWindow::_updateImage() {
+    // ImageData inválido?
     if (this->_imageData->getStatus().type != ImageDataStatus::READY || this->_imageData == nullptr) {
-        this->_label->clear();
+        this->_imageLabel->clear();
         return false;
     }
     const QImage image = generate_qimage(*this->_imageData);
+    // Imagem vazia?
+    if (image.isNull()) {
+        this->_imageLabel->clear();
+        return false;
+    }
 
+    // Calcula dimensões da imagem para caber na tela
     int imageWidth = image.width();
     int imageHeight = image.height();
     double widthScale = std::min(this->_maxWidth, imageWidth) / double(imageWidth);
     double heightScale = std::min(this->_maxHeight, imageHeight) / double(imageHeight);
-    double imageScale = std::min(widthScale, heightScale); // para caber na tela
+    double imageScale = std::min(widthScale, heightScale);
 
-    this->_label->setPixmap(
+    // Atualiza a área de imagem com a imagem nova
+    this->_imageLabel->setPixmap(
         QPixmap::fromImage(image.scaled(int(imageWidth * imageScale), int(imageHeight * imageScale)))
     );
 
@@ -234,10 +268,12 @@ bool MainWindow::_updateImage() {
 
 void MainWindow::_updateMetadata() {
     this->_metadataTree->clear();
+    // Imagem inválida?
     if (this->_imageData->getStatus().type != ImageDataStatus::READY || this->_imageData == nullptr) {
         return;
     }
     std::vector<MetadataNode> metadata = this->_imageData->getMetadata();
+    // Adiciona os metadados de primeiro nível, adicionando seus filhos através da função feed_tree_widget
     for (int i = 0; i < metadata.size(); i++) {
         MetadataNode node = metadata[i];
         QStringList labels;
